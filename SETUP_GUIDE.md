@@ -97,33 +97,34 @@ terraform apply -auto-approve
 **What gets created**:
 - ✅ Azure Resource Group
 - ✅ Log Analytics Workspace (for centralized logging)
-- ✅ 3 Storage Accounts with different TLS versions:
+- ✅ 2 Test Storage Accounts with different TLS versions:
   - `makranaappst1` with TLS 1.0
   - `makranaappst2` with TLS 1.1
-  - Optional: Add your own storage accounts
 
-**Output**: Note the Log Analytics Workspace ID and storage account names.
+**Note**: For testing only, use these sample accounts. For production, add your own non-compliant storage accounts in Step 4.
 
 ---
 
 ## Step 4: Identify Non-Compliant Storage Accounts
 
-### Option A: Use the Sample Accounts
-The Terraform deployment creates 3 test storage accounts. Use these for initial testing.
+Create or update the **StorageAccounts.xlsx** file in the project root directory with your storage accounts.
 
-### Option B: Use Your Own Storage Accounts
-If you have existing storage accounts with TLS 1.0 or 1.1, list them in the Excel file.
+**File Location**: `./StorageAccounts.xlsx` (same directory as DiagEnable.ps1 and RemoveDiag.ps1)
 
-1. **Open `StorageAccounts.xlsx`** (or create from template)
-2. **Fill in your storage accounts**:
+**Excel Format** - Two columns required:
 
-| StorageAccountName | ResourceGroupName | TLSVersion |
-|---|---|---|
-| mystorageacct1 | rg-production | TLS1_0 |
-| mystorageacct2 | rg-production | TLS1_1 |
-| mystorageacct3 | rg-compliance | TLS1_0 |
+| StorageAccountName | ResourceGroupName |
+|---|---|
+| mystorageacct1 | rg-production |
+| mystorageacct2 | rg-production |
+| makranaappst1 | rg-TLS-Capture |
+| makranaappst2 | rg-TLS-Capture |
 
-3. **Save the file** in the project root directory
+**Notes**:
+- **For testing only**: Use the 2 sample accounts created by Terraform (`makranaappst1`, `makranaappst2`)
+- **For production**: Add your own non-compliant storage accounts (those with TLS 1.0 or 1.1)
+- The TLS version will be detected from the storage account configuration in Azure
+- Save the file in the project root directory before running Step 6
 
 ---
 
@@ -205,110 +206,52 @@ Get-AzStorageBlob -Container "test" -Context $context
 
 ```kusto
 StorageBlobLogs
-| where Protocol has_any ("TLS1.0", "TLS1.1")
-| summarize Count = count() by ClientIP, Protocol, CallerIPAddress
-| order by Count desc
+| where TimeGenerated > ago(7d)
+| project
+    StorageAccountName = AccountName,
+    TLSVersion = TlsVersion,
+    CallerIp = CallerIpAddress
 ```
 
-**Alternative queries**:
-
-```kusto
-# All storage operations with TLS version
-StorageBlobLogs
-| where isnotempty(Protocol)
-| summarize Count = count() by Protocol
-| order by Count desc
-
-# Queue operations
-StorageQueueLogs
-| where Protocol has_any ("TLS1.0", "TLS1.1")
-| summarize Count = count() by ClientIP, Protocol
-
-# File share operations
-StorageFileLogs
-| where Protocol has_any ("TLS1.0", "TLS1.1")
-| summarize Count = count() by ClientIP, Protocol
-
-# Table storage operations
-StorageTableLogs
-| where Protocol has_any ("TLS1.0", "TLS1.1")
-| summarize Count = count() by ClientIP, Protocol
-```
+This query will show:
+- **StorageAccountName**: The storage account being accessed
+- **TLSVersion**: The TLS version used by the client (1.0, 1.1, 1.2, etc.)
+- **CallerIp**: The IP address of the client
 
 ---
 
-## Step 8: Identify & Notify Non-Compliant Clients
+## Step 8: Identify & Notify Respective Storage Account Owners
 
 ### Analyze Results
-1. Review KQL query results
-2. Identify clients/applications using TLS 1.0 or 1.1:
-   - Note their **Client IP** and **CallerIPAddress**
-   - Identify the **owners** of those applications
+1. Review KQL query results from Step 7
+2. Identify storage accounts and clients using TLS 1.0 or 1.1:
+   - Note the **StorageAccountName** (from query results)
+   - Note their **Client IP** and **CallerIp**
    - Document the **access frequency**
 
-### Notify Stakeholders
-Send notifications to application owners:
-
-📧 **Sample Message**:
-```
-Subject: Azure Storage TLS 1.0/1.1 Deprecation - Action Required
-
-Your application is using deprecated TLS versions to connect to Azure Storage.
-Microsoft will retire TLS 1.0 and 1.1 support in February 2026.
-
-Required Action:
-- Update your application to use TLS 1.2 or higher
-- Target Date: [date before Feb 2026]
-- Testing Window: [test date]
-
-Contact: [your-team-info]
-```
+### Notify Storage Account Owners
+Identify the respective owner/team responsible for each storage account and notify them of the deprecated TLS usage. Provide them with:
+- The KQL results showing their non-compliant clients
+- Timeline for TLS 1.0/1.1 retirement (February 2026)
+- Request to update their applications to use TLS 1.2 or higher
 
 ---
 
-## Step 9: Update Storage Account TLS Versions
+## Step 9: Migrate Non-Compliant Storage Accounts
 
-### Plan the Migration
-1. **Coordinate with application owners** to ensure they've updated their code
-2. **Test with TLS 1.2 only** in non-production accounts first
-3. **Schedule migrations** during maintenance windows
+After confirming that TLS 1.0 and 1.1 usage has been identified in Log Analytics (from Step 8), migrate the non-compliant storage accounts to enforce TLS 1.2 or higher:
 
-### Update TLS Version
+1. **Coordinate with storage account owners** to ensure their applications have been updated to use TLS 1.2+
+2. **Update the minimum TLS version** to TLS 1.2 using Azure CLI or Portal
+3. **Schedule migrations** during agreed maintenance windows
+4. **Verify** that clients can still connect after the update
 
-#### Option A: Using Terraform
-Edit `storageAccount.tf` and update the `min_tls_version`:
-
-```hcl
-resource "azurerm_storage_account" "storageaccount1" {
-  ...
-  min_tls_version = "TLS1_2"  # Updated from TLS1_0
-  ...
-}
-
-# Apply changes
-terraform apply -auto-approve
-```
-
-#### Option B: Using Azure CLI
 ```powershell
+# Update TLS version using Azure CLI
 az storage account update `
   --name "mystorageacct1" `
   --resource-group "rg-TLS-Capture" `
   --min-tls-version TLS1_2
-```
-
-#### Option C: Using Azure Portal
-1. Go to **Storage Account** → **Configuration**
-2. Set **Minimum TLS version** to **1.2**
-3. Click **Save**
-
-### Verify Migration
-```powershell
-# Check current TLS setting
-az storage account show `
-  --name "mystorageacct1" `
-  --resource-group "rg-TLS-Capture" `
-  --query minimumTlsVersion
 ```
 
 ---
@@ -338,10 +281,10 @@ After analysis is complete, remove diagnostic settings to:
 |-------|----------|
 | **Terraform init fails** | Check Azure CLI is logged in: `az login` |
 | **Permission denied errors** | Verify Service Principal has Contributor role |
-| **DiagEnable.ps1 fails** | Run PowerShell as Administrator; Verify `StorageAccounts.xlsx` exists |
+| **DiagEnable.ps1 fails** | Run PowerShell as Administrator; Verify `StorageAccounts.xlsx` exists in project root |
 | **No logs appearing in LAW** | Wait 5-10 minutes; Verify diagnostics are enabled in portal |
-| **TLS version won't update** | Check no active connections to storage; Re-run `terraform apply` |
 | **ImportExcel module missing** | Run: `Install-Module -Name ImportExcel -Force` |
+| **StorageAccounts.xlsx not found** | Ensure Excel file is saved in the project root directory (same location as DiagEnable.ps1) |
 
 ---
 
