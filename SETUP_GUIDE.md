@@ -235,6 +235,9 @@ Identify the respective owner/team responsible for each storage account and noti
 - Timeline for TLS 1.0/1.1 retirement (February 2026)
 - Request to update their applications to use TLS 1.2 or higher
 
+### Monitor & Take Action
+**Monitor the client TLS version in LAW and take action for non-compliant clients without any surprises on the retirement date.** Continue tracking until all clients have migrated to TLS 1.2 or higher. This prevents service disruptions when Microsoft enforces the deprecation.
+
 ---
 
 ## Step 9: Migrate Non-Compliant Storage Accounts
