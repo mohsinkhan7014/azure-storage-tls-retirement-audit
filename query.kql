@@ -1,0 +1,7 @@
+StorageBlobLogs
+| where TimeGenerated > ago(7d)
+| project
+    StorageAccountName = AccountName,
+    TLSVersion = TlsVersion,
+    CallerIp = CallerIpAddress
+    
