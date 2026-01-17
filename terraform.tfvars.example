@@ -1,0 +1,10 @@
+# Terraform Variables - Example File
+# Copy this file to terraform.tfvars and update with your actual values
+
+subscription_id = "00000000-0000-0000-0000-000000000000"  # Replace with your Azure Subscription ID
+tenant_id       = "00000000-0000-0000-0000-000000000000"  # Replace with your Azure Tenant ID
+client_id       = "00000000-0000-0000-0000-000000000000"  # Replace with your Service Principal Client ID
+client_secret   = "your-client-secret-here"               # Replace with your Service Principal Secret
+
+resource_group_name = "rg-TLS-Capture"  # Azure Resource Group name
+location            = "centralus"       # Azure region for resources
