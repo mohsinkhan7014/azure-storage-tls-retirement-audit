@@ -305,11 +305,14 @@ After analysis is complete, remove diagnostic settings to:
 
 ## Next Steps
 
-1. ✅ Review TLS migration results
-2. ✅ Document findings for compliance team
-3. ✅ Create migration schedule for remaining accounts
-4. ✅ Monitor for any TLS 1.0/1.1 connections after upgrade
-5. ✅ Archive logs for audit purposes
+1. Let  know if you have any concern. please use below email id to connect. 
+2. email : mohsinkhanlpu@gmail.com
+
+✅ Review TLS migration results
+✅ Document findings for compliance team
+✅ Create migration schedule for remaining accounts
+✅ Monitor for any TLS 1.0/1.1 connections after upgrade
+✅ Archive logs for audit purposes
 
 ---
 
